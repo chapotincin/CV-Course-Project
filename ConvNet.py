@@ -3,92 +3,79 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class ConvNet(nn.Module):
-    def __init__(self, mode):
-        super(ConvNet, self).__init__()
+class FeatureExtractorNet(nn.Module):
+    def __init__(self):
+        super(FeatureExtractorNet, self).__init__()
         
-        # Define various layers here, such as in the tutorial example
-        # self.conv1 = nn.Conv2D(...)
+        # Define layers for a galaxy's feature extraction
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding = 1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(16, 32, 3, padding = 1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(32, 64, 3, padding = 1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(64, 64, 3, padding = 1),
+            nn.ReLU(True)
+        )
+
+        # Define final convolutional output size
+        self.flattened_size = 64 * 53 * 53
         
-        # This will select the forward pass function based on mode for the ConvNet.
-        # Based on the question, you have 5 modes available for step 1 to 5.
-        # During creation of each ConvNet model, you will assign one of the valid mode.
-        # This will fix the forward function (and the network graph) for the entire training/testing
-        if mode == 1:
-            self.forward = self.model_1
-        elif mode == 2:
-            self.forward = self.model_2
-        elif mode == 3:
-            self.forward = self.model_3
-        elif mode == 4:
-            self.forward = self.model_4
-        elif mode == 5:
-            self.forward = self.model_5
-        else: 
-            print("Invalid mode ", mode, "selected. Select between 1-5")
-            exit(0)
-        
-        
-    # Baseline model. step 1
-    def model_1(self, X):
-        # ======================================================================
-        # One fully connected layer.
-        #
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Uncomment the following return stmt once method implementation is done.
-        # return  fcl
-        # Delete line return NotImplementedError() once method is implemented.
-        return NotImplementedError()
+    # Extract the features from a galaxy
+    def forward(self, X):
+        X = self.features(X)
+        X = torch.flatten(X, 1)
 
-    # Use two convolutional layers.
-    def model_2(self, X):
-        # ======================================================================
-        # Two convolutional layers + one fully connnected layer.
-        #
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Uncomment the following return stmt once method implementation is done.
-        # return  fcl
-        # Delete line return NotImplementedError() once method is implemented.
-        return NotImplementedError()
+        return X
 
-    # Replace sigmoid with ReLU.
-    def model_3(self, X):
-        # ======================================================================
-        # Two convolutional layers + one fully connected layer, with ReLU.
-        #
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Uncomment the following return stmt once method implementation is done.
-        # return  fcl
-        # Delete line return NotImplementedError() once method is implemented.
-        return NotImplementedError()
 
-    # Add one extra fully connected layer.
-    def model_4(self, X):
-        # ======================================================================
-        # Two convolutional layers + two fully connected layers, with ReLU.
-        #
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Uncomment the following return stmt once method implementation is done.
-        # return  fcl
-        # Delete line return NotImplementedError() once method is implemented.
-        return NotImplementedError()
+class GalaxyTypeNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fe = FeatureExtractorNet()
 
-    # Use Dropout now.
-    def model_5(self, X):
-        # ======================================================================
-        # Two convolutional layers + two fully connected layers, with ReLU.
-        # and  + Dropout.
-        #
-        # ----------------- YOUR CODE HERE ----------------------
-        #
+        # Define a galaxy classifier
+        self.classifier = nn.Linear(self.fe.flattened_size, 2)
 
-        # Uncomment the following return stmt once method implementation is done.
-        # return  fcl
-        # Delete line return NotImplementedError() once method is implemented.
-        return NotImplementedError()
-    
-    
+    # Classify a galaxy as either elliptical or spiral
+    def forward(self, x):
+        features = self.fe(x)
+
+        return self.classifier(features)
+
+
+class RoundnessNet(nn.Module):
+    def __init__(self, num_roundness_classes):
+        super().__init__()
+        self.fe = FeatureExtractorNet()
+
+        # Define a roundness measurer
+        self.measurer = nn.Linear(self.fe.flattened_size, num_roundness_classes)
+
+    # Measure the roundness of an elliptical galaxy
+    def forward(self, x):
+        features = self.fe(x)
+
+        return self.measurer(features)
+
+
+class NumSpiralArmsNet(nn.Module):
+    def __init__(self, num_arm_classes):
+        super().__init__()
+        self.fe = FeatureExtractorNet()
+
+        # Define an arm counter
+        self.counter = nn.Linear(self.fe.flattened_size, num_arm_classes)
+
+    # Count the number of arms of a spiral galaxy
+    def forward(self, x):
+        features = self.fe(x)
+
+        return self.counter(features)
