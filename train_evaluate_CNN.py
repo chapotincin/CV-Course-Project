@@ -10,8 +10,9 @@ from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 from ConvNet import ConvNet 
 import argparse
-import numpy as np 
-
+import numpy as np
+import torchvision
+from torch.nn import CrossEntropyLoss
 def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     '''
     Trains the model for an epoch and optimizes it.
@@ -43,13 +44,9 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
         
         # Do forward pass for current set of data
         output = model(data)
-        
-        # ======================================================================
-        # Compute loss based on criterion
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Remove NotImplementedError and assign correct loss function.
-        loss = NotImplementedError()
+
+
+        loss = criterion(output, target)
         
         # Computes gradient based on final loss
         loss.backward()
@@ -68,7 +65,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
         # ----------------- YOUR CODE HERE ----------------------
         #
         # Remove NotImplementedError and assign counting function for correct predictions.
-        correct = NotImplementedError()
+        correct = pred.eq(target.view_as(pred)).sum().item()
         
     train_loss = float(np.mean(losses))
     train_acc = correct / ((batch_idx+1) * batch_size)
@@ -79,7 +76,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader,criterion,epoch):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -109,7 +106,7 @@ def test(model, device, test_loader):
             #
             # Remove NotImplementedError and assign correct loss function.
             # Compute loss based on same criterion as training 
-            loss = NotImplementedError()
+            loss = criterion(output, target)
             
             # Append loss to overall test loss
             losses.append(loss.item())
@@ -143,20 +140,12 @@ def run_main(FLAGS):
     
     # Initialize the model and send to device 
     model = ConvNet(FLAGS.mode).to(device)
-    
-    # ======================================================================
-    # Define loss function.
-    # ----------------- YOUR CODE HERE ----------------------
-    #
-    # Remove NotImplementedError and assign correct loss function.
-    criterion = NotImplementedError()
-    
-    # ======================================================================
-    # Define optimizer function.
-    # ----------------- YOUR CODE HERE ----------------------
-    #
-    # Remove NotImplementedError and assign appropriate optimizer with learning rate and other paramters.
-    optimizer = NotImplementedError()
+
+    # set loss function to cross entropy loss.
+    criterion = CrossEntropyLoss()
+
+    # set optimizer to SGD with learning rate specified in config.
+    optimizer = optim.SGD(model.parameters(), lr=FLAGS.learning_rate)
         
     
     # Create transformations to apply to each data sample 
@@ -168,14 +157,18 @@ def run_main(FLAGS):
     
     # Load datasets for training and testing
     # Inbuilt datasets available in torchvision (check documentation online)
-    dataset1 = datasets.MNIST('./data/', train=True, download=True,
-                       transform=transform)
-    dataset2 = datasets.MNIST('./data/', train=False,
-                       transform=transform)
-    train_loader = DataLoader(dataset1, batch_size = FLAGS.batch_size, 
-                                shuffle=True, num_workers=4)
-    test_loader = DataLoader(dataset2, batch_size = FLAGS.batch_size, 
-                                shuffle=False, num_workers=4)
+    train_dataset = torchvision.datasets.ImageFolder(root='train')
+    valid_dataset = torchvision.datasets.ImageFolder(root='test')
+    train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
+    valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
+    # dataset1 = datasets.MNIST('./data/', train=True, download=True,
+    #                    transform=transform)
+    # dataset2 = datasets.MNIST('./data/', train=False,
+    #                    transform=transform)
+    # train_loader = DataLoader(dataset1, batch_size = FLAGS.batch_size,
+    #                             shuffle=True, num_workers=4)
+    # test_loader = DataLoader(dataset2, batch_size = FLAGS.batch_size,
+    #                             shuffle=False, num_workers=4)
     
     best_accuracy = 0.0
     
@@ -183,7 +176,7 @@ def run_main(FLAGS):
     for epoch in range(1, FLAGS.num_epochs + 1):
         train_loss, train_accuracy = train(model, device, train_loader,
                                             optimizer, criterion, epoch, FLAGS.batch_size)
-        test_loss, test_accuracy = test(model, device, test_loader)
+        test_loss, test_accuracy = test(model, device, valid_loader,criterion,epoch)
         
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
