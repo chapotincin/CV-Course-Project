@@ -119,7 +119,7 @@ def test(model, device, test_loader,criterion,epoch):
             # ----------------- YOUR CODE HERE ----------------------
             #
             # Remove NotImplementedError and assign counting function for correct predictions.
-            correct = NotImplementedError()
+            correct = pred.eq(target.view_as(pred)).sum().item()
 
     test_loss = float(np.mean(losses))
     accuracy = 100. * correct / len(test_loader.dataset)
@@ -157,10 +157,13 @@ def run_main(FLAGS):
     
     # Load datasets for training and testing
     # Inbuilt datasets available in torchvision (check documentation online)
-    train_dataset = torchvision.datasets.ImageFolder(root='train')
-    valid_dataset = torchvision.datasets.ImageFolder(root='test')
+    #assign label based on folder directory [e,s] so 0 or 1
+    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/train')
+    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/test')
     train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
     valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
+    print(train_dataset.class_to_idx)
+    print(train_loader)
     # dataset1 = datasets.MNIST('./data/', train=True, download=True,
     #                    transform=transform)
     # dataset2 = datasets.MNIST('./data/', train=False,
