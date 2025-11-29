@@ -8,7 +8,11 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
-from ConvNet import ConvNet 
+#IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#uncomment this to use Fabian conv code
+#from ConvNet import FeatureExtractorNet, GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
+#comment to not use udays code
+from Conv2Net import ConvNet
 import argparse
 import numpy as np
 import torchvision
@@ -158,12 +162,19 @@ def run_main(FLAGS):
     # Load datasets for training and testing
     # Inbuilt datasets available in torchvision (check documentation online)
     #assign label based on folder directory [e,s] so 0 or 1
-    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/train')
-    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/test')
+    #remove transform if using fabian code. I am using transform since i cannot get a whole number for size of image after conovlution
+    transform = transforms.Compose([
+        transforms.Resize((423, 423)),  # Add this line to resize images
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
+
+    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/train',transform=transform)
+    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/test',transform=transform)
     train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
     valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
-    print(train_dataset.class_to_idx)
-    print(train_loader)
+    # print(train_dataset.class_to_idx)
+    # print(train_loader)
     # dataset1 = datasets.MNIST('./data/', train=True, download=True,
     #                    transform=transform)
     # dataset2 = datasets.MNIST('./data/', train=False,
