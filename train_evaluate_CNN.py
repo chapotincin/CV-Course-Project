@@ -10,9 +10,9 @@ from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 #IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #uncomment this to use Fabian conv code
-#from ConvNet import FeatureExtractorNet, GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
+from ConvNet import GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
 #comment to not use udays code
-from Conv2Net import ConvNet
+#from Conv2Net import ConvNet
 import argparse
 import numpy as np
 import torchvision
@@ -143,7 +143,7 @@ def run_main(FLAGS):
     print("Torch device selected: ", device)
     
     # Initialize the model and send to device 
-    model = ConvNet(FLAGS.mode).to(device)
+    model = GalaxyTypeNet().to(device)
 
     # set loss function to cross entropy loss.
     criterion = CrossEntropyLoss()
@@ -163,11 +163,11 @@ def run_main(FLAGS):
     # Inbuilt datasets available in torchvision (check documentation online)
     #assign label based on folder directory [e,s] so 0 or 1
     #remove transform if using fabian code. I am using transform since i cannot get a whole number for size of image after conovlution
-    transform = transforms.Compose([
-        transforms.Resize((423, 423)),  # Add this line to resize images
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
+    # transform = transforms.Compose([
+    #     transforms.Resize((423, 423)),  # Add this line to resize images
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.1307,), (0.3081,))
+    # ])
 
     train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/train',transform=transform)
     valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/test',transform=transform)
