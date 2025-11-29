@@ -17,6 +17,9 @@ import argparse
 import numpy as np
 import torchvision
 from torch.nn import CrossEntropyLoss
+
+debug_log = True
+
 def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     '''
     Trains the model for an epoch and optimizes it.
@@ -35,6 +38,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     # Empty list to store losses 
     losses = []
     correct = 0
+    total = 0
     
     # Iterate over entire training samples (1 epoch)
     for batch_idx, batch_sample in enumerate(train_loader):
@@ -69,13 +73,22 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
         # ----------------- YOUR CODE HERE ----------------------
         #
         # Remove NotImplementedError and assign counting function for correct predictions.
-        correct = pred.eq(target.view_as(pred)).sum().item()
-        
+        correct_this_time = pred.eq(target.view_as(pred)).sum().item()
+        correct += correct_this_time
+        total_this_time = len(pred)
+        total += total_this_time
+        if (batch_idx % 10 == 0 and debug_log):
+            print("Guess is:")
+            print(torch.flatten(pred))
+            print("Actual is:")
+            print(torch.flatten(target))
+            print(str(correct_this_time) + " were correct out of " + str(total_this_time) + " (batch " + str(batch_idx) + ")")
+    
     train_loss = float(np.mean(losses))
-    train_acc = correct / ((batch_idx+1) * batch_size)
+    train_acc = correct / total
     print('Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        float(np.mean(losses)), correct, (batch_idx+1) * batch_size,
-        100. * correct / ((batch_idx+1) * batch_size)))
+        float(np.mean(losses)), correct, total,
+        100. * correct / total))
     return train_loss, train_acc
     
 
@@ -93,6 +106,7 @@ def test(model, device, test_loader,criterion,epoch):
     
     losses = []
     correct = 0
+    total = 0
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
@@ -123,13 +137,22 @@ def test(model, device, test_loader,criterion,epoch):
             # ----------------- YOUR CODE HERE ----------------------
             #
             # Remove NotImplementedError and assign counting function for correct predictions.
-            correct = pred.eq(target.view_as(pred)).sum().item()
-
+            correct_this_time = pred.eq(target.view_as(pred)).sum().item()
+            correct += correct_this_time
+            total_this_time = len(pred)
+            total += total_this_time
+            if (batch_idx % 10 == 0 and debug_log):
+                print("Guess is:")
+                print(torch.flatten(pred).tolist())
+                print("Actual is:")
+                print(torch.flatten(target).tolist())
+                print(str(correct_this_time) + " were correct out of " + str(total_this_time) + " (batch " + str(batch_idx) + ")")
+    
     test_loss = float(np.mean(losses))
-    accuracy = 100. * correct / len(test_loader.dataset)
+    accuracy = 100. * correct / total
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset), accuracy))
+        test_loss, correct, total, accuracy))
     
     return test_loss, accuracy
     
@@ -169,8 +192,8 @@ def run_main(FLAGS):
     #     transforms.Normalize((0.1307,), (0.3081,))
     # ])
 
-    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/train',transform=transform)
-    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/test',transform=transform)
+    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/galaxies/train',transform=transform)
+    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/galaxies/test',transform=transform)
     train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
     valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
     # print(train_dataset.class_to_idx)
@@ -188,13 +211,18 @@ def run_main(FLAGS):
     
     # Run training for n_epochs specified in config 
     for epoch in range(1, FLAGS.num_epochs + 1):
+        if (debug_log):
+            print("Epoch " + str(epoch) + ":")
+        
         train_loss, train_accuracy = train(model, device, train_loader,
                                             optimizer, criterion, epoch, FLAGS.batch_size)
         test_loss, test_accuracy = test(model, device, valid_loader,criterion,epoch)
         
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
-    
+        
+        if (debug_log):
+            print("End of epoch " + str(epoch) + ".\n")
     
     print("accuracy is {:2.2f}".format(best_accuracy))
     
