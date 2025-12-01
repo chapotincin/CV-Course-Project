@@ -1,5 +1,6 @@
 from __future__ import print_function
 import argparse
+import matplotlib.pyplot as plt
 import os
 import torch
 import torch.nn as nn
@@ -208,6 +209,11 @@ def run_main(FLAGS):
     #                             shuffle=False, num_workers=4)
     
     best_accuracy = 0.0
+    train_accuracies = []
+    train_losses = []
+    test_accuracies = []
+    test_losses = []
+    epochs = []
     
     # Run training for n_epochs specified in config 
     for epoch in range(1, FLAGS.num_epochs + 1):
@@ -221,11 +227,47 @@ def run_main(FLAGS):
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
         
+
+        epochs.append(int(epoch))
+        test_losses.append(float(test_loss))
+        test_accuracies.append(float(test_accuracy))
+        train_accuracies.append(float(train_accuracy))
+        train_losses.append(float(train_loss))
+
         if (debug_log):
             print("End of epoch " + str(epoch) + ".\n")
     
     print("accuracy is {:2.2f}".format(best_accuracy))
     
+    
+    torch.device('cpu')
+    
+    fig, ax1 = plt.subplots()
+    
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel('Test Accuracy', color="b")
+    ax1.plot(epochs, test_accuracies, color="b")
+
+    ax2 = ax1.twinx()
+    
+    ax2.set_ylabel('Test Loss', color="r")
+    ax2.plot(epochs, test_losses, color="r")
+
+    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={FLAGS.num_epochs},test=True).png", dpi=300)
+    
+    fig, ax1 = plt.subplots()
+    
+    ax1.set_ylabel('Train Accuracy', color="g")
+    ax1.plot(epochs, train_accuracies, color="g")
+
+    ax2 = ax1.twinx()
+    
+    ax2.set_ylabel('Train Loss', color="orange")
+    ax2.plot(epochs, train_losses, color="orange")
+
+    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={FLAGS.num_epochs},test=False).png", dpi=300)
+
+
     print("Training and evaluation finished")
     
     
