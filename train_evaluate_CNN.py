@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import matplotlib.pyplot as plt
+import copy
 import os
 import torch
 import torch.nn as nn
@@ -8,6 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from collections.abc import Sequence
 from torch.utils.data import DataLoader
+from torch.utils.data import WeightedRandomSampler
 from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 #IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -71,9 +73,6 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
         
         # ======================================================================
         # Count correct predictions overall 
-        # ----------------- YOUR CODE HERE ----------------------
-        #
-        # Remove NotImplementedError and assign counting function for correct predictions.
         correct_this_time = pred.eq(target.view_as(pred)).sum().item()
         correct += correct_this_time
         total_this_time = len(pred)
@@ -87,7 +86,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
     
     train_loss = float(np.mean(losses))
     train_acc = correct / total
-    print('Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('Train set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         float(np.mean(losses)), correct, total,
         100. * correct / total))
     return train_loss, train_acc
@@ -121,10 +120,6 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
             
             # ======================================================================
             # Compute loss based on same criterion as training
-            # ----------------- YOUR CODE HERE ----------------------
-            #
-            # Remove NotImplementedError and assign correct loss function.
-            # Compute loss based on same criterion as training 
             loss = criterion(output, target)
             
             # Append loss to overall test loss
@@ -135,9 +130,6 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
             
             # ======================================================================
             # Count correct predictions overall 
-            # ----------------- YOUR CODE HERE ----------------------
-            #
-            # Remove NotImplementedError and assign counting function for correct predictions.
             correct_this_time = pred.eq(target.view_as(pred)).sum().item()
             correct += correct_this_time
             total_this_time = len(pred)
@@ -152,7 +144,7 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
     test_loss = float(np.mean(losses))
     accuracy = 100. * correct / total
 
-    print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('Test set:  Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         test_loss, correct, total, accuracy))
     
     return test_loss, accuracy
@@ -193,10 +185,49 @@ def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', '
     ax2.plot(epochs, losses, color=colors[1])
 
     plt.savefig(f"output(mode={FLAGS.mode},num_epochs={epochs[-1]},test={mode}).png", dpi=300)
+
+def model_from_mode(mode=1, num_classes=-1, fe=None):
+    '''
+    Returns the model to train for the given mode.
+    mode: The mode to train. 1 is galaxy shape, 2 is roundness, 3 is number of arms.
+    fe: The feature extractor, if present.
+    '''
+    if (num_classes < 2):
+        raise ValueError("Expected at least two classes!")
+
+    if (mode == 1):
+        return GalaxyTypeNet(fe=fe)
+    elif (mode == 2):
+        return RoundnessNet(num_classes, fe=fe)
+    elif (mode == 3):
+        return NumSpiralArmsNet(num_classes, fe=fe)
+    else:
+        raise ValueError("Unexpected mode " + str(mode) + "!")
+
+def create_weighted_sampler(dataset):
+    '''
+    Returns a weighted sampler for the given data set.
+    Counts the number of elements in each class and over-samples some of the 
+    classes to ensure a statistically balanced number of each.
+    Returns the number of classes and the sampler.
+    '''
+
+    targets = []
+    for _, label in dataset.samples:
+        targets.append(label)
     
+    class_counts = torch.bincount(torch.tensor(targets))
+    total_samples = sum(class_counts)
+    
+    class_weights = [total_samples / (len(class_counts) * count) for count in class_counts]
+    weights = [class_weights[label] for label in targets]
+    
+    sampler = WeightedRandomSampler(weights, num_samples=len(targets), replacement=True)
+    return len(class_counts), sampler
 
 def run_main(FLAGS):
     
+    debug_log = FLAGS.debug_log
     feature_extractor_path = "feature_extractor.pth"
     
     # Check if cuda is available
@@ -215,68 +246,70 @@ def run_main(FLAGS):
         for p in fe.parameters():
             p.requires_grad=False;
 
-    # Initialize the model and send to device 
-    model = GalaxyTypeNet(fe=fe).to(device)
-
-    # set loss function to cross entropy loss.
-    criterion = CrossEntropyLoss()
-
-    # set optimizer to SGD with learning rate specified in config.
-    optimizer = optim.SGD(model.parameters(), lr=FLAGS.learning_rate)
-        
-    
     # Create transformations to apply to each data sample 
     # Can specify variations such as image flip, color flip, random crop, ...
     transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-        ])
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(180),
+        transforms.ToTensor()
+    ])
     
     # Load datasets for training and testing
-    # Inbuilt datasets available in torchvision (check documentation online)
-    #assign label based on folder directory [e,s] so 0 or 1
-    #remove transform if using fabian code. I am using transform since i cannot get a whole number for size of image after conovlution
-    # transform = transforms.Compose([
-    #     transforms.Resize((423, 423)),  # Add this line to resize images
-    #     transforms.ToTensor(),
-    #     transforms.Normalize((0.1307,), (0.3081,))
-    # ])
+    # Path to load train and test from.
     train_path = FLAGS.data_path + r'/train'
     valid_path = FLAGS.data_path + r'/test'
-    train_dataset = torchvision.datasets.ImageFolder(root=train_path,transform=transform)
-    valid_dataset = torchvision.datasets.ImageFolder(root=valid_path,transform=transform)
-    train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
-    valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
-    # print(train_dataset.class_to_idx)
-    # print(train_loader)
-    # dataset1 = datasets.MNIST('./data/', train=True, download=True,
-    #                    transform=transform)
-    # dataset2 = datasets.MNIST('./data/', train=False,
-    #                    transform=transform)
-    # train_loader = DataLoader(dataset1, batch_size = FLAGS.batch_size,
-    #                             shuffle=True, num_workers=4)
-    # test_loader = DataLoader(dataset2, batch_size = FLAGS.batch_size,
-    #                             shuffle=False, num_workers=4)
+    # Load datasets.
+    train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform=transform)
+    valid_dataset = torchvision.datasets.ImageFolder(root=valid_path, transform=transform)
+    # Create weighted samplers.
+    num_train_classes, train_sampler = create_weighted_sampler(train_dataset)
+    num_valid_classes, valid_sampler = create_weighted_sampler(valid_dataset)
+    # Create the data loaders.
+    train_loader = DataLoader(train_dataset, sampler=train_sampler, batch_size=FLAGS.batch_size, num_workers=4)
+    valid_loader = DataLoader(valid_dataset, sampler=valid_sampler, batch_size=FLAGS.batch_size, num_workers=4)
     
+    print("Identified " + str(num_train_classes) + " training classes and " + str(num_valid_classes) + " testing classes.")
+
+    # Ensure that there's the same number of training and testing classes.
+    if (num_train_classes != num_valid_classes):
+        raise ValueError("Expected same number of train and test classes! Got " + str(num_train_classes) + " and " + str(num_valid_classes) + ".")
+
+    # Initialize the model and send to device 
+    model = model_from_mode(mode=FLAGS.mode, num_classes=num_train_classes, fe=fe).to(device)
+
+    # Set the criterion as normal, with no weights.
+    criterion = nn.CrossEntropyLoss()
+
+    # set optimizer to SGD with learning rate specified in config.
+    optimizer = optim.SGD(model.parameters(), lr=FLAGS.learning_rate)
+    
+
+    # Initialize variables to hold all the collected data from training the 
+    # model. Some of these may not be used with certain command-line settings,
+    # but it's simpler to just collect and ignore the data than to not collect 
+    # it.
     best_accuracy = 0.0
+    best_fe = None
     train_accuracies = []
     train_losses = []
     test_accuracies = []
     test_losses = []
     epochs = []
-    debug_log = FLAGS.debug_log
     # Run training for n_epochs specified in config 
     for epoch in range(1, FLAGS.num_epochs + 1):
         print("Epoch " + str(epoch) + ":")
         
-        train_loss, train_accuracy = train(model, device, train_loader,
-                                            optimizer, criterion, epoch, FLAGS.batch_size, debug_log)
+        train_loss, train_accuracy = train(model, device, train_loader, optimizer, criterion, epoch, FLAGS.batch_size, debug_log)
         
         test_loss, test_accuracy = test(model, device, valid_loader, criterion, epoch, debug_log)
         
+        # If the accuracy is the best, record it.
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
-        
+            # Take a deep copy of the best state of the feature extractor.
+            # A deep copy is needed because it's a reference; just normal 
+            # copying isn't enough!
+            best_fe = copy.deepcopy(model.fe.state_dict())
 
         epochs.append(int(epoch))
         test_losses.append(float(test_loss))
@@ -305,9 +338,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('CNN Exercise.')
     parser.add_argument('--mode',
                         type=int, default=1,
-                        help='Select mode between 1-5.')
+                        help='Select mode between 1-3.')
     parser.add_argument('--learning_rate',
-                        type=float, default=0.1,
+                        type=float, default=0.001,
                         help='Initial learning rate.')
     parser.add_argument('--num_epochs',
                         type=int,
@@ -338,9 +371,9 @@ if __name__ == '__main__':
                         help='Loads the feature extractor model to a file in the current working directory.')
     parser.add_argument('--data_path',
                         type=str,
-                        default='/content/drive/MyDrive/galaxies',
+                        default='/content/drive/MyDrive/galaxies/type',
                         help='Directory containing the /train and /test data folders.')
-    
+
     FLAGS = None
     FLAGS, unparsed = parser.parse_known_args()
     
