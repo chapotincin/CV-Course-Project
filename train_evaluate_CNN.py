@@ -6,12 +6,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from collections.abc import Sequence
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 #IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #uncomment this to use Fabian conv code
-from ConvNet import GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
+from ConvNet import FeatureExtractorNet, GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
 #comment to not use udays code
 #from Conv2Net import ConvNet
 import argparse
@@ -19,9 +20,8 @@ import numpy as np
 import torchvision
 from torch.nn import CrossEntropyLoss
 
-debug_log = True
 
-def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
+def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, debug_log = False):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -94,7 +94,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size):
     
 
 
-def test(model, device, test_loader,criterion,epoch):
+def test(model, device, test_loader, criterion, epoch, debug_log = False):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -156,9 +156,49 @@ def test(model, device, test_loader,criterion,epoch):
         test_loss, correct, total, accuracy))
     
     return test_loss, accuracy
+
+def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', 'r')):
+    '''
+    Saves a graph of the accuracies and losses with respect to the epoch to the current working directory.
+    epochs: A list of all the epochs.
+    accuracies: A list of the accuracy for each epoch. 
+    losses: A list of the loss for each epoch.
+    mode: The mode to label the graph with, usually either 'Test' or 'Train'.
+    colors: A two-tuple of the matplotlib colors used for the two lines. The first element is the color of the first line, and the second is the color of the second.
+    '''
+    
+    if (not isinstance(epochs, Sequence)):
+        raise TypeError("Epochs must be a sequence.")
+    if (not isinstance(accuracies, Sequence)):
+        raise TypeError("Accuracies must be a sequence.")
+    if (not isinstance(losses, Sequence)):
+        raise TypeError("Losses must be a sequence.")
+    if (len(epochs) != len(accuracies)):
+        raise ValueError("Expected same number of epochs and accuracies.")
+    if (len(epochs) != len(losses)):
+        raise ValueError("Expected same number of epochs and losses.")
+    if (len(colors) != 2):
+        raise ValueError("Expected two colors!")
+    
+
+    fig, ax1 = plt.subplots()
+    
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel(str(mode) + (" " if mode else "") + 'Accuracy', color=colors[0])
+    ax1.plot(epochs, accuracies, color=colors[0])
+
+    ax2 = ax1.twinx()
+    
+    ax2.set_ylabel(str(mode) + (" " if mode else "") + 'Loss', color=colors[1])
+    ax2.plot(epochs, losses, color=colors[1])
+
+    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={epochs[-1]},test={mode}).png", dpi=300)
     
 
 def run_main(FLAGS):
+    
+    feature_extractor_path = "feature_extractor.pth"
+    
     # Check if cuda is available
     use_cuda = torch.cuda.is_available()
     
@@ -166,8 +206,17 @@ def run_main(FLAGS):
     device = torch.device("cuda" if use_cuda else "cpu")
     print("Torch device selected: ", device)
     
+    # Load the feature extractor net, if so desired.
+    fe = None
+    if (FLAGS.load_feature_extractor):
+        fe = FeatureExtractorNet()
+        fe.load_state_dict(torch.load(feature_extractor_path, weights_only=True))
+        fe.eval()
+        for p in model.parameters():
+            p.requires_grad=False;
+
     # Initialize the model and send to device 
-    model = GalaxyTypeNet().to(device)
+    model = GalaxyTypeNet(fe=fe).to(device)
 
     # set loss function to cross entropy loss.
     criterion = CrossEntropyLoss()
@@ -192,9 +241,10 @@ def run_main(FLAGS):
     #     transforms.ToTensor(),
     #     transforms.Normalize((0.1307,), (0.3081,))
     # ])
-
-    train_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/galaxies/train',transform=transform)
-    valid_dataset = torchvision.datasets.ImageFolder(root=r'/content/drive/MyDrive/galaxies/test',transform=transform)
+    train_path = FLAGS.data_path + r'/train'
+    valid_path = FLAGS.data_path + r'/test'
+    train_dataset = torchvision.datasets.ImageFolder(root=train_path,transform=transform)
+    valid_dataset = torchvision.datasets.ImageFolder(root=valid_path,transform=transform)
     train_loader = DataLoader(train_dataset,batch_size=FLAGS.batch_size, shuffle=True, num_workers=4)
     valid_loader = DataLoader(valid_dataset,batch_size=FLAGS.batch_size, shuffle=False, num_workers=4)
     # print(train_dataset.class_to_idx)
@@ -214,15 +264,15 @@ def run_main(FLAGS):
     test_accuracies = []
     test_losses = []
     epochs = []
-    
+    debug_log = FLAGS.debug_log
     # Run training for n_epochs specified in config 
     for epoch in range(1, FLAGS.num_epochs + 1):
         if (debug_log):
             print("Epoch " + str(epoch) + ":")
         
         train_loss, train_accuracy = train(model, device, train_loader,
-                                            optimizer, criterion, epoch, FLAGS.batch_size)
-        test_loss, test_accuracy = test(model, device, valid_loader,criterion,epoch)
+                                            optimizer, criterion, epoch, FLAGS.batch_size, debug_log)
+        test_loss, test_accuracy = test(model, device, valid_loader, criterion, epoch, debug_log)
         
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
@@ -238,38 +288,18 @@ def run_main(FLAGS):
             print("End of epoch " + str(epoch) + ".\n")
     
     print("accuracy is {:2.2f}".format(best_accuracy))
-    
+    print("Training and evaluation finished")
     
     torch.device('cpu')
     
-    fig, ax1 = plt.subplots()
-    
-    ax1.set_xlabel('Epochs')
-    ax1.set_ylabel('Test Accuracy', color="b")
-    ax1.plot(epochs, test_accuracies, color="b")
+    if (FLAGS.save_graphs):
+        print("Producing output graphs")
+        output_graphs(epochs=epochs, accuracies=train_accuracies, losses=train_losses, mode="Train")
+        output_graphs(epochs=epochs, accuracies=test_accuracies, losses=test_losses, mode="Test")
+        print("Graphs saved")
 
-    ax2 = ax1.twinx()
-    
-    ax2.set_ylabel('Test Loss', color="r")
-    ax2.plot(epochs, test_losses, color="r")
-
-    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={FLAGS.num_epochs},test=True).png", dpi=300)
-    
-    fig, ax1 = plt.subplots()
-    
-    ax1.set_ylabel('Train Accuracy', color="g")
-    ax1.plot(epochs, train_accuracies, color="g")
-
-    ax2 = ax1.twinx()
-    
-    ax2.set_ylabel('Train Loss', color="orange")
-    ax2.plot(epochs, train_losses, color="orange")
-
-    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={FLAGS.num_epochs},test=False).png", dpi=300)
-
-
-    print("Training and evaluation finished")
-    
+    if (FLAGS.save_feature_extractor):
+        torch.save(model.fe.state_dict(), feature_extractor_path)
     
 if __name__ == '__main__':
     # Set parameters for Sparse Autoencoder
@@ -291,6 +321,26 @@ if __name__ == '__main__':
                         type=str,
                         default='logs',
                         help='Directory to put logging.')
+    parser.add_argument('--debug_log',
+                        action='store_true', 
+                        default=False,
+                        help='Increase logging for debugging.')
+    parser.add_argument('--save_graphs',
+                        action='store_true', 
+                        default=False,
+                        help='Saves output graphs to a file in the current working directory.')
+    parser.add_argument('--save_feature_extractor',
+                        action='store_true', 
+                        default=False,
+                        help='Saves the feature extractor model to a file in the current working directory.')
+    parser.add_argument('--load_feature_extractor',
+                        action='store_true', 
+                        default=False,
+                        help='Loads the feature extractor model to a file in the current working directory.')
+    parser.add_argument('--data_path',
+                        type=str,
+                        default='/content/drive/MyDrive/galaxies',
+                        help='Directory containing the /train and /test data folders.')
     
     FLAGS = None
     FLAGS, unparsed = parser.parse_known_args()
