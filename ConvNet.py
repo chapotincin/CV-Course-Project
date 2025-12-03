@@ -37,9 +37,11 @@ class FeatureExtractorNet(nn.Module):
 
 
 class GalaxyTypeNet(nn.Module):
-    def __init__(self):
+
+    def __init__(self, fe=None):
         super().__init__()
-        self.fe = FeatureExtractorNet()
+        
+        self.fe = fe if fe else FeatureExtractorNet()
 
         # Define a galaxy classifier
         self.classifier = nn.Linear(self.fe.flattened_size, 2)
@@ -52,9 +54,10 @@ class GalaxyTypeNet(nn.Module):
 
 
 class RoundnessNet(nn.Module):
-    def __init__(self, num_roundness_classes):
+    def __init__(self, num_roundness_classes, fe=None):
         super().__init__()
-        self.fe = FeatureExtractorNet()
+        
+        self.fe = fe if fe else FeatureExtractorNet()
 
         # Define a roundness measurer
         self.measurer = nn.Linear(self.fe.flattened_size, num_roundness_classes)
@@ -67,9 +70,10 @@ class RoundnessNet(nn.Module):
 
 
 class NumSpiralArmsNet(nn.Module):
-    def __init__(self, num_arm_classes):
+    def __init__(self, num_arm_classes, fe=None):
         super().__init__()
-        self.fe = FeatureExtractorNet()
+        
+        self.fe = fe if fe else FeatureExtractorNet()
 
         # Define an arm counter
         self.counter = nn.Linear(self.fe.flattened_size, num_arm_classes)
