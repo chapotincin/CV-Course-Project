@@ -152,7 +152,7 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
     test_loss = float(np.mean(losses))
     accuracy = 100. * correct / total
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, total, accuracy))
     
     return test_loss, accuracy
@@ -212,7 +212,7 @@ def run_main(FLAGS):
         fe = FeatureExtractorNet()
         fe.load_state_dict(torch.load(feature_extractor_path, weights_only=True))
         fe.eval()
-        for p in model.parameters():
+        for p in fe.parameters():
             p.requires_grad=False;
 
     # Initialize the model and send to device 
@@ -267,11 +267,11 @@ def run_main(FLAGS):
     debug_log = FLAGS.debug_log
     # Run training for n_epochs specified in config 
     for epoch in range(1, FLAGS.num_epochs + 1):
-        if (debug_log):
-            print("Epoch " + str(epoch) + ":")
+        print("Epoch " + str(epoch) + ":")
         
         train_loss, train_accuracy = train(model, device, train_loader,
                                             optimizer, criterion, epoch, FLAGS.batch_size, debug_log)
+        
         test_loss, test_accuracy = test(model, device, valid_loader, criterion, epoch, debug_log)
         
         if test_accuracy > best_accuracy:
@@ -284,8 +284,7 @@ def run_main(FLAGS):
         train_accuracies.append(float(train_accuracy))
         train_losses.append(float(train_loss))
 
-        if (debug_log):
-            print("End of epoch " + str(epoch) + ".\n")
+        print("End of epoch " + str(epoch) + ".\n")
     
     print("accuracy is {:2.2f}".format(best_accuracy))
     print("Training and evaluation finished")
