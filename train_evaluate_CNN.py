@@ -23,7 +23,7 @@ import torchvision
 from torch.nn import CrossEntropyLoss
 
 
-def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, debug_log = False):
+def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, num_classes, debug_log = False):
     '''
     Trains the model for an epoch and optimizes it.
     model: The model to train. Should already be in correct device.
@@ -93,7 +93,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
     
 
 
-def test(model, device, test_loader, criterion, epoch, debug_log = False):
+def test(model, device, test_loader, criterion, epoch, num_classes, debug_log = False):
     '''
     Tests the model.
     model: The model to train. Should already be in correct device.
@@ -107,6 +107,7 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
     losses = []
     correct = 0
     total = 0
+    similarity_matrix = [[0 for i in range(num_classes)] for j in range(num_classes)]
     
     # Set torch.no_grad() to disable gradient computation and backpropagation
     with torch.no_grad():
@@ -128,9 +129,16 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
             # Get predicted index by selecting maximum log-probability
             pred = output.argmax(dim=1, keepdim=True)
             
+            # Reshape the target for convenience.
+            target = target.view_as(pred)
+
+            # Fill the similarity matrix.
+            for pair in zip(pred, target):
+                similarity_matrix[pair[0]][pair[1]]+=1
+
             # ======================================================================
             # Count correct predictions overall 
-            correct_this_time = pred.eq(target.view_as(pred)).sum().item()
+            correct_this_time = pred.eq(target).sum().item()
             correct += correct_this_time
             total_this_time = len(pred)
             total += total_this_time
@@ -147,7 +155,18 @@ def test(model, device, test_loader, criterion, epoch, debug_log = False):
     print('Test set:  Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
         test_loss, correct, total, accuracy))
     
-    return test_loss, accuracy
+    return test_loss, accuracy, similarity_matrix
+
+def output_similarity_matrix(num_epochs, similarity_matrix=None, mode=None, classes=[]):
+    plt.figure(figsize=(8, 8)) # Adjust figure size as needed
+    plt.imshow(similarity_matrix, cmap='viridis', origin='upper')
+    # 3. Add a color bar to interpret the similarity values
+    plt.colorbar(label='Similarity Score')
+    plt.title("Similarity Matrix")
+    plt.xticks(np.arange(len(classes)), classes)
+    plt.yticks(np.arange(len(classes)), classes)
+
+    plt.savefig(f"similarity(mode={FLAGS.mode},num_epochs={num_epochs},test={mode}).png", dpi=300)
 
 def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', 'r')):
     '''
@@ -273,9 +292,9 @@ def run_main(FLAGS):
     # Ensure that there's the same number of training and testing classes.
     if (num_train_classes != num_valid_classes):
         raise ValueError("Expected same number of train and test classes! Got " + str(num_train_classes) + " and " + str(num_valid_classes) + ".")
-
+    num_classes = num_valid_classes
     # Initialize the model and send to device 
-    model = model_from_mode(mode=FLAGS.mode, num_classes=num_train_classes, fe=fe).to(device)
+    model = model_from_mode(mode=FLAGS.mode, num_classes=num_classes, fe=fe).to(device)
 
     # Set the criterion as normal, with no weights.
     criterion = nn.CrossEntropyLoss()
@@ -289,6 +308,7 @@ def run_main(FLAGS):
     # but it's simpler to just collect and ignore the data than to not collect 
     # it.
     best_accuracy = 0.0
+    best_similarity_matrix = None
     best_fe = None
     train_accuracies = []
     train_losses = []
@@ -299,13 +319,14 @@ def run_main(FLAGS):
     for epoch in range(1, FLAGS.num_epochs + 1):
         print("Epoch " + str(epoch) + ":")
         
-        train_loss, train_accuracy = train(model, device, train_loader, optimizer, criterion, epoch, FLAGS.batch_size, debug_log)
+        train_loss, train_accuracy = train(model, device, train_loader, optimizer, criterion, epoch, FLAGS.batch_size, num_classes, debug_log)
         
-        test_loss, test_accuracy = test(model, device, valid_loader, criterion, epoch, debug_log)
+        test_loss, test_accuracy, test_similarity_matrix = test(model, device, valid_loader, criterion, epoch, num_classes, debug_log)
         
         # If the accuracy is the best, record it.
         if test_accuracy > best_accuracy:
             best_accuracy = test_accuracy
+            best_similarity_matrix = test_similarity_matrix
             # Take a deep copy of the best state of the feature extractor.
             # A deep copy is needed because it's a reference; just normal 
             # copying isn't enough!
@@ -328,6 +349,7 @@ def run_main(FLAGS):
         print("Producing output graphs")
         output_graphs(epochs=epochs, accuracies=train_accuracies, losses=train_losses, mode="Train")
         output_graphs(epochs=epochs, accuracies=test_accuracies, losses=test_losses, mode="Test")
+        output_similarity_matrix(epochs[-1], best_similarity_matrix, mode="Test", classes=valid_dataset.classes)
         print("Graphs saved")
 
     if (FLAGS.save_feature_extractor):
