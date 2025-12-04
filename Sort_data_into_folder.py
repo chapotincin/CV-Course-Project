@@ -51,16 +51,19 @@ def find_image_file(img_id):
 
 num_moved = 0
 missing = []
+# Iterate through each row in the dataframe
 
 for _, row in df.iterrows():
+    # Extract image ID and label from current row
     img_id = row[image_id_col]
     label = str(row[label_col]).strip().lower()  # 'e' or 's'
-
+    # Try to find the image file path using the helper function
     src_path = find_image_file(img_id)
     if src_path is None:
+        # If image not found, add to missing list and skip to next iteration
         missing.append(img_id)
         continue
-
+    # Determine destination directory based on label for number of arms
     if label == "1":
         dst_dir = out_1_dir
     elif label == "2":
@@ -70,16 +73,17 @@ for _, row in df.iterrows():
     elif label == "4":
         dst_dir = out_4_dir
     else:
+        # If label is not 1-4, print warning and skip this image
         print(f"⚠️ Unknown label '{label}' for image_id={img_id}, skipping.")
         continue
-
+    # Construct the destination path using original filename
     dst_path = dst_dir / src_path.name
-
+    # Either copy or move the file based on USE_COPY setting
     if USE_COPY:
         shutil.copy2(src_path, dst_path)
     else:
         shutil.move(src_path, dst_path)
-
+    # Increment counter for processed images
     num_moved += 1
 
 print(f"Done. {'Copied' if USE_COPY else 'Moved'} {num_moved} images.")
