@@ -134,7 +134,7 @@ Install with `pip install torch torchvision numpy matplotlib`.
  `--feature_extractor_path`:
    type: str,
    
-   default: "feature_extractor.pth",
+   default: `feature_extractor.pth`,
    
    description: The path to the feature extractor's weights, for saving or loading. 
    
@@ -142,7 +142,7 @@ Install with `pip install torch torchvision numpy matplotlib`.
  
    type: str,
    
-   default: "model.pth",
+   default: `model.pth`,
    
    description: The path to the model's weights, for saving or loading. 
    
