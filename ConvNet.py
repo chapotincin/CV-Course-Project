@@ -44,7 +44,7 @@ class ClassifierNet(nn.Module):
 
         # Define a galaxy classifier
         self.classifier = nn.Sequential(
-            nn.Linear(self.fe.flattened_size, 250),
+            nn.Linear(self.fe.flattened_size, 90),
             nn.Dropout(p=0.25),
             nn.ReLU(True),
             nn.Linear(90, 20),
