@@ -1,11 +1,15 @@
 # Galaxy Classification
 
 ## Instructions For Use:
-To run the code we used google co lab and its gpus.
+To run the code we used Google Colab and its gpus.
+
 First install the required libraries:
 !pip install torch torchvision tensorboard numpy
-Have your train_evaluate_CNN.py and ConvNet.py and image folder path available. In command line change data_path to point to the folder for which classification you want to run and which has the train and test folders. The files inside that folder must be named train and test.  For example as shown below. Change number of epochs, learning rate, batch size as you please. If you wish to use pretrained weights from a saved .pth file (which one is included in our github repository feature_extractor.pth) set to --load_feature_extractor otherwise if you want to save the parameters you should use --…
+
+Have your train_evaluate_CNN.py and ConvNet.py and image folder path available. In command line change data_path to point to the folder for which classification(e_s_classifier, roundness_classifier, arms classifier) you want to run and which has the train and test folders. The files inside that folder must be named train and test.  An example is shown below for the command line argument. Change number of epochs, learning rate, batch size as you please. If you wish to use pretrained weights from a saved .pth file (which one is included in our github repository feature_extractor.pth) set to --load_feature_extractor otherwise if you want to save the parameters use --save_feature_extractor
+
 --debug_log prints out what the model guessed vs what it actually was. 
+
 –save_graphs saves the graphs for you.  
 !python train_evaluate_CNN.py --data_path "/content/drive/MyDrive/galaxies/type" --num_epochs 30 --learning_rate 0.01 --batch_size 64 --save_graphs --debug_log --load_feature_extractor
 
@@ -29,13 +33,13 @@ Objid to Classifications Data: [Galaxy Zoo 2](https://gz2hart.s3.amazonaws.com/g
 [All Filtered Images](https://drive.google.com/drive/folders/10qCqWFHPoPNe2Tbj1vegkPiwSQGtHRt3)
 
 Elliptical vs. Spiral Classification:
-[Train](https://drive.google.com/drive/folders/1Xp8tzf35JJROHjW2tac0DUVDE16YlYg8) | [Test](https://drive.google.com/drive/folders/167VcOcN99xMUSPLZ3G0ZW5PKK2MTcB48)
+[Train/Test](https://drive.google.com/drive/folders/1WaHt-QjC-Rqpo6_QAh2ItabbJnxzMjMC?usp=sharing)
 
 Roundness Classification:
-[Train](https://drive.google.com/drive/folders/1ruEh-9p4ij70ZFvtXYAf52J6pWi99f4f) | [Test](https://drive.google.com/drive/folders/12mszkEJ6XhyT32Ls67CwmXnA4BiV45Yb)
+[Train/Test](https://drive.google.com/drive/folders/1sNikyuK42-hoaMfp8EHQpVRLa5VYU4sD?usp=sharing)
 
 Number of Arms Classification:
-[Train](https://drive.google.com/drive/folders/1iCQb619Q966hA-3PqwB4Mr_NW6-O6Iqk) | [Test](https://drive.google.com/drive/folders/1anHYWCZffnYbfZXMDG0a0nXpK5VE5OM-)
+[Train/Test](https://drive.google.com/drive/folders/1UP7BRmON2uriyZjDCaop9dYsUQ-1n62H?usp=sharing)
 
 ## Sorting the Images
 
