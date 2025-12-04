@@ -166,7 +166,7 @@ def output_similarity_matrix(num_epochs, similarity_matrix=None, mode=None, clas
     plt.xticks(np.arange(len(classes)), classes)
     plt.yticks(np.arange(len(classes)), classes)
 
-    plt.savefig(f"similarity(mode={FLAGS.mode},num_epochs={num_epochs},test={mode}).png", dpi=300)
+    plt.savefig(f"similarity(num_epochs={num_epochs},test={mode}).png", dpi=300)
 
 def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', 'r')):
     '''
@@ -203,7 +203,7 @@ def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', '
     ax2.set_ylabel(str(mode) + (" " if mode else "") + 'Loss', color=colors[1])
     ax2.plot(epochs, losses, color=colors[1])
 
-    plt.savefig(f"output(mode={FLAGS.mode},num_epochs={epochs[-1]},test={mode}).png", dpi=300)
+    plt.savefig(f"output(num_epochs={epochs[-1]},test={mode}).png", dpi=300)
 
 def create_weighted_sampler(dataset):
     '''
@@ -354,9 +354,6 @@ def run_main(FLAGS):
 if __name__ == '__main__':
     # Set parameters for Sparse Autoencoder
     parser = argparse.ArgumentParser('CNN Exercise.')
-    parser.add_argument('--mode',
-                        type=int, default=1,
-                        help='Select mode between 1-3.')
     parser.add_argument('--learning_rate',
                         type=float, default=0.001,
                         help='Initial learning rate.')
@@ -367,10 +364,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size',
                         type=int, default=10,
                         help='Batch size. Must divide evenly into the dataset sizes.')
-    parser.add_argument('--log_dir',
-                        type=str,
-                        default='logs',
-                        help='Directory to put logging.')
     parser.add_argument('--debug_log',
                         action='store_true', 
                         default=False,
