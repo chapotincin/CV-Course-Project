@@ -20,16 +20,16 @@ Objid to Classifications Data: [Galaxy Zoo 2](https://gz2hart.s3.amazonaws.com/g
 
 ## Resulting Image Dataset:
 
-[All Filtered Images](https://drive.google.com/drive/folders/10qCqWFHPoPNe2Tbj1vegkPiwSQGtHRt3?usp=drive_link)
+[All Filtered Images](https://drive.google.com/drive/folders/10qCqWFHPoPNe2Tbj1vegkPiwSQGtHRt3)
 
 Elliptical vs. Spiral Classification:
-[Train](https://drive.google.com/drive/folders/1Xp8tzf35JJROHjW2tac0DUVDE16YlYg8?usp=drive_link) | [Test](https://drive.google.com/drive/folders/167VcOcN99xMUSPLZ3G0ZW5PKK2MTcB48?usp=drive_link)
+[Train](https://drive.google.com/drive/folders/1Xp8tzf35JJROHjW2tac0DUVDE16YlYg8) | [Test](https://drive.google.com/drive/folders/167VcOcN99xMUSPLZ3G0ZW5PKK2MTcB48)
 
 Roundness Classification:
-[Train](https://drive.google.com/drive/folders/1ruEh-9p4ij70ZFvtXYAf52J6pWi99f4f?usp=drive_link) | [Test](https://drive.google.com/drive/folders/12mszkEJ6XhyT32Ls67CwmXnA4BiV45Yb?usp=drive_link)
+[Train](https://drive.google.com/drive/folders/1ruEh-9p4ij70ZFvtXYAf52J6pWi99f4f) | [Test](https://drive.google.com/drive/folders/12mszkEJ6XhyT32Ls67CwmXnA4BiV45Yb)
 
-Number of arms Classification:
-[Train](https://drive.google.com/drive/folders/1iCQb619Q966hA-3PqwB4Mr_NW6-O6Iqk?usp=drive_link) | [Test](https://drive.google.com/drive/folders/1anHYWCZffnYbfZXMDG0a0nXpK5VE5OM-?usp=drive_link)
+Number of Arms Classification:
+[Train](https://drive.google.com/drive/folders/1iCQb619Q966hA-3PqwB4Mr_NW6-O6Iqk) | [Test](https://drive.google.com/drive/folders/1anHYWCZffnYbfZXMDG0a0nXpK5VE5OM-)
 
 ## Sorting the Images
 
