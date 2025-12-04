@@ -14,7 +14,7 @@ from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 #IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #uncomment this to use Fabian conv code
-from ConvNet import FeatureExtractorNet, GalaxyTypeNet, RoundnessNet, NumSpiralArmsNet
+from ConvNet import FeatureExtractorNet, ClassifierNet
 #comment to not use udays code
 #from Conv2Net import ConvNet
 import argparse
@@ -205,24 +205,6 @@ def output_graphs(epochs=[], accuracies=[], losses=[], mode=None, colors=('b', '
 
     plt.savefig(f"output(mode={FLAGS.mode},num_epochs={epochs[-1]},test={mode}).png", dpi=300)
 
-def model_from_mode(mode=1, num_classes=-1, fe=None):
-    '''
-    Returns the model to train for the given mode.
-    mode: The mode to train. 1 is galaxy shape, 2 is roundness, 3 is number of arms.
-    fe: The feature extractor, if present.
-    '''
-    if (num_classes < 2):
-        raise ValueError("Expected at least two classes!")
-
-    if (mode == 1):
-        return GalaxyTypeNet(fe=fe)
-    elif (mode == 2):
-        return RoundnessNet(num_classes, fe=fe)
-    elif (mode == 3):
-        return NumSpiralArmsNet(num_classes, fe=fe)
-    else:
-        raise ValueError("Unexpected mode " + str(mode) + "!")
-
 def create_weighted_sampler(dataset):
     '''
     Returns a weighted sampler for the given data set.
@@ -247,7 +229,8 @@ def create_weighted_sampler(dataset):
 def run_main(FLAGS):
     
     debug_log = FLAGS.debug_log
-    feature_extractor_path = "feature_extractor.pth"
+    feature_extractor_path = FLAGS.feature_extractor_path
+    model_path = FLAGS.model_path
     
     # Check if cuda is available
     use_cuda = torch.cuda.is_available()
@@ -256,15 +239,7 @@ def run_main(FLAGS):
     device = torch.device("cuda" if use_cuda else "cpu")
     print("Torch device selected: ", device)
     
-    # Load the feature extractor net, if so desired.
-    fe = None
-    if (FLAGS.load_feature_extractor):
-        fe = FeatureExtractorNet()
-        fe.load_state_dict(torch.load(feature_extractor_path, weights_only=True))
-        fe.eval()
-        for p in fe.parameters():
-            p.requires_grad=False;
-
+    
     # Create transformations to apply to each data sample 
     # Can specify variations such as image flip, color flip, random crop, ...
     transform=transforms.Compose([
@@ -293,8 +268,24 @@ def run_main(FLAGS):
     if (num_train_classes != num_valid_classes):
         raise ValueError("Expected same number of train and test classes! Got " + str(num_train_classes) + " and " + str(num_valid_classes) + ".")
     num_classes = num_valid_classes
+    
+    # Load the feature extractor net, if so desired.
+    fe = None
+    if (FLAGS.load_feature_extractor):
+        fe = FeatureExtractorNet()
+        fe.load_state_dict(torch.load(feature_extractor_path, weights_only=True))
+        fe.eval()
+        for p in fe.parameters():
+            p.requires_grad=False;
+
+    
     # Initialize the model and send to device 
-    model = model_from_mode(mode=FLAGS.mode, num_classes=num_classes, fe=fe).to(device)
+    model = ClassifierNet(num_classes, fe=fe).to(device)
+    
+    
+    if (FLAGS.load_model):
+        model.load_state_dict(torch.load(model_path, weights_only=True))
+        model.eval()
 
     # Set the criterion as normal, with no weights.
     criterion = nn.CrossEntropyLoss()
@@ -310,6 +301,7 @@ def run_main(FLAGS):
     best_accuracy = 0.0
     best_similarity_matrix = None
     best_fe = None
+    best_model = None
     train_accuracies = []
     train_losses = []
     test_accuracies = []
@@ -331,6 +323,8 @@ def run_main(FLAGS):
             # A deep copy is needed because it's a reference; just normal 
             # copying isn't enough!
             best_fe = copy.deepcopy(model.fe.state_dict())
+            # Take a deep copy of the best state of the model.
+            best_model = copy.deepcopy(model.state_dict())
 
         epochs.append(int(epoch))
         test_losses.append(float(test_loss))
@@ -353,7 +347,9 @@ def run_main(FLAGS):
         print("Graphs saved")
 
     if (FLAGS.save_feature_extractor):
-        torch.save(model.fe.state_dict(), feature_extractor_path)
+        torch.save(best_fe, feature_extractor_path)
+    if (FLAGS.save_model):
+        torch.save(best_model, model_path)
     
 if __name__ == '__main__':
     # Set parameters for Sparse Autoencoder
@@ -387,14 +383,30 @@ if __name__ == '__main__':
                         action='store_true', 
                         default=False,
                         help='Saves the feature extractor model to a file in the current working directory.')
+    parser.add_argument('--save_model',
+                        action='store_true', 
+                        default=False,
+                        help='Saves the full model to a file in the current working directory.')
     parser.add_argument('--load_feature_extractor',
                         action='store_true', 
                         default=False,
-                        help='Loads the feature extractor model to a file in the current working directory.')
+                        help='Loads the feature extractor model from a file in the current working directory.')
+    parser.add_argument('--load_model',
+                        action='store_true', 
+                        default=False,
+                        help='Loads the full model from a file in the current working directory.')
     parser.add_argument('--data_path',
                         type=str,
                         default='/content/drive/MyDrive/galaxies/type',
                         help='Directory containing the /train and /test data folders.')
+    parser.add_argument('--feature_extractor_path',
+                        type=str,
+                        default="feature_extractor.pth",
+                        help='The path to the feature extractor\'s weights, for saving or loading.')
+    parser.add_argument('--model_path',
+                        type=str,
+                        default="model.pth",
+                        help='The path to the model\'s weights, for saving or loading.')
 
     FLAGS = None
     FLAGS, unparsed = parser.parse_known_args()
