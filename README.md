@@ -20,6 +20,8 @@ Objid to Classifications Data: [Galaxy Zoo 2](https://gz2hart.s3.amazonaws.com/g
 
 ## Resulting Image Dataset:
 
+[All Filtered Images](https://drive.google.com/drive/folders/10qCqWFHPoPNe2Tbj1vegkPiwSQGtHRt3?usp=drive_link)
+
 Elliptical vs. Spiral Classification:
 
 [Train](https://drive.google.com/drive/folders/1Xp8tzf35JJROHjW2tac0DUVDE16YlYg8?usp=drive_link) | [Test](https://drive.google.com/drive/folders/167VcOcN99xMUSPLZ3G0ZW5PKK2MTcB48?usp=drive_link)
