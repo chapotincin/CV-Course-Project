@@ -35,51 +35,25 @@ class FeatureExtractorNet(nn.Module):
 
         return X
 
+class ClassifierNet(nn.Module):
 
-class GalaxyTypeNet(nn.Module):
-
-    def __init__(self, fe=None):
+    def __init__(self, num_classes, fe=None):
         super().__init__()
-        
+        self.num_classes = num_classes
         self.fe = fe if fe else FeatureExtractorNet()
 
         # Define a galaxy classifier
-        self.classifier = nn.Linear(self.fe.flattened_size, 2)
+        self.classifier = nn.Sequential(
+            nn.Linear(self.fe.flattened_size, 250),
+            nn.Dropout(p=0.25),
+            nn.ReLU(True),
+            nn.Linear(90, 20),
+            nn.Dropout(p=0.25),
+            nn.ReLU(True),
+            nn.Linear(20, num_classes)
+        )
 
     # Classify a galaxy as either elliptical or spiral
     def forward(self, x):
         features = self.fe(x)
-
         return self.classifier(features)
-
-
-class RoundnessNet(nn.Module):
-    def __init__(self, num_roundness_classes, fe=None):
-        super().__init__()
-        
-        self.fe = fe if fe else FeatureExtractorNet()
-
-        # Define a roundness measurer
-        self.measurer = nn.Linear(self.fe.flattened_size, num_roundness_classes)
-
-    # Measure the roundness of an elliptical galaxy
-    def forward(self, x):
-        features = self.fe(x)
-
-        return self.measurer(features)
-
-
-class NumSpiralArmsNet(nn.Module):
-    def __init__(self, num_arm_classes, fe=None):
-        super().__init__()
-        
-        self.fe = fe if fe else FeatureExtractorNet()
-
-        # Define an arm counter
-        self.counter = nn.Linear(self.fe.flattened_size, num_arm_classes)
-
-    # Count the number of arms of a spiral galaxy
-    def forward(self, x):
-        features = self.fe(x)
-
-        return self.counter(features)
