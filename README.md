@@ -1,7 +1,13 @@
 # Galaxy Classification
 
 ## Instructions For Use:
-
+To run the code we used google co lab and its gpus.
+First install the required libraries:
+!pip install torch torchvision tensorboard numpy
+Have your train_evaluate_CNN.py and ConvNet.py and image folder path available. In command line change data_path to point to the folder for which classification you want to run and which has the train and test folders. The files inside that folder must be named train and test.  For example as shown below. Change number of epochs, learning rate, batch size as you please. If you wish to use pretrained weights from a saved .pth file (which one is included in our github repository feature_extractor.pth) set to --load_feature_extractor otherwise if you want to save the parameters you should use --…
+--debug_log prints out what the model guessed vs what it actually was. 
+–save_graphs saves the graphs for you.  
+!python train_evaluate_CNN.py --data_path "/content/drive/MyDrive/galaxies/type" --num_epochs 30 --learning_rate 0.01 --batch_size 64 --save_graphs --debug_log --load_feature_extractor
 
 ## Required Libraries:
 
